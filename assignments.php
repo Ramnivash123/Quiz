@@ -325,7 +325,7 @@
         </div>
     </div>
 
-<form id="examForm" action="submit.php?title=<?php echo urlencode($_GET['title']); ?>" method="post">
+    <form id="examForm" action="submit.php?title=<?php echo urlencode($_GET['title']); ?>" method="post">
 <?php
 include 'db.php';
 
@@ -348,12 +348,12 @@ if (isset($_GET['title'])) {
             echo "<div class='assignment-details' data-qn='" . $row['qn'] . "'>"; // Store qn as a data attribute
             echo "<h2>Question " . $row['qn'] . ": Assignment Details</h2>"; // Display qn number
             echo "<p><strong>Question:</strong> " . $row["question"] . "</p>";
-            // Display options as radio buttons
+            // Display options as radio buttons with numeric values
             echo "<p><strong>Options:</strong></p>";
-            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='" . htmlspecialchars($row["opt1"], ENT_QUOTES) . "' id='opt1_" . $row['id'] . "'><label class='option-label' for='opt1_" . $row['id'] . "'>" . $row["opt1"] . "</label></p>";
-            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='" . htmlspecialchars($row["opt2"], ENT_QUOTES) . "' id='opt2_" . $row['id'] . "'><label class='option-label' for='opt2_" . $row['id'] . "'>" . $row["opt2"] . "</label></p>";
-            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='" . htmlspecialchars($row["opt3"], ENT_QUOTES) . "' id='opt3_" . $row['id'] . "'><label class='option-label' for='opt3_" . $row['id'] . "'>" . $row["opt3"] . "</label></p>";
-            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='" . htmlspecialchars($row["opt4"], ENT_QUOTES) . "' id='opt4_" . $row['id'] . "'><label class='option-label' for='opt4_" . $row['id'] . "'>" . $row["opt4"] . "</label></p>";
+            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='1' id='opt1_" . $row['id'] . "'><label class='option-label' for='opt1_" . $row['id'] . "'>" . $row["opt1"] . "</label></p>";
+            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='2' id='opt2_" . $row['id'] . "'><label class='option-label' for='opt2_" . $row['id'] . "'>" . $row["opt2"] . "</label></p>";
+            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='3' id='opt3_" . $row['id'] . "'><label class='option-label' for='opt3_" . $row['id'] . "'>" . $row["opt3"] . "</label></p>";
+            echo "<p><input type='radio' name='option[" . $row['id'] . "]' value='4' id='opt4_" . $row['id'] . "'><label class='option-label' for='opt4_" . $row['id'] . "'>" . $row["opt4"] . "</label></p>";
             echo "</div>";
 
             // Set the timer duration for JavaScript
@@ -371,43 +371,19 @@ if (isset($_GET['title'])) {
 }
 
 // No need to explicitly close the connection
-
 ?>
 
-        <div class="assignment-details">
-            <h2>Question <span id="questionNumber">1</span>: Assignment Details</h2>
-            <p><strong>Question:</strong> <span id="questionText"></span></p>
-            <div class="options">
-                <label class="option-label">
-                    <input type="radio" name="option" value="1">
-                    <span id="option1"></span>
-                </label>
-                <label class="option-label">
-                    <input type="radio" name="option" value="2">
-                    <span id="option2"></span>
-                </label>
-                <label class="option-label">
-                    <input type="radio" name="option" value="3">
-                    <span id="option3"></span>
-                </label>
-                <label class="option-label">
-                    <input type="radio" name="option" value="4">
-                    <span id="option4"></span>
-                </label>
-            </div>
-        </div>
-        
-        <div class="button-group">
-            <button type="button" class="btn btn-secondary" id="prevBtn" onclick="prevQuestion()">Previous</button>
-            <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">Next</button>
-            <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()" style="display: none;">Submit</button>
-        </div>
-        <input type="hidden" id="date" name="date">
-        <input type="hidden" id="start_time" name="start_time">
-        <input type="hidden" id="end_time" name="end_time">
-        <input type="hidden" id="quit_time" name="quit_time">
-        <input type="hidden" id="question_number" name="question_number" value="1">
-        <input type="hidden" id="qn" name="qn" value="">
+<div class="button-group">
+    <button type="button" class="btn btn-secondary" id="prevBtn" onclick="prevQuestion()">Previous</button>
+    <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">Next</button>
+    <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()" style="display: none;">Submit</button>
+</div>
+<input type="hidden" id="date" name="date">
+<input type="hidden" id="start_time" name="start_time">
+<input type="hidden" id="end_time" name="end_time">
+<input type="hidden" id="quit_time" name="quit_time">
+<input type="hidden" id="question_number" name="question_number" value="1">
+<input type="hidden" id="qn" name="qn" value="">
 </form>
 
 <!--Quitting Back button -->
