@@ -1,310 +1,196 @@
 <?php
 session_start();
-$teacher_name = $_SESSION['teacher_name'] ?? '';
+include 'db.php';
+
+// Fetch the teacher's name from the session
+$teacher_name = $_SESSION['teacher_name'] ?? null;
+
+if (!$teacher_name) {
+    die("Teacher name not found in session.");
+}
+
+try {
+    // Fetch data for the highest marks per subject-title combination
+    $sql = "SELECT e.subject, m.title, m.stu_name, m.marks, m.date
+        FROM marks m
+        INNER JOIN exam e ON m.title = e.title
+        WHERE e.teacher = :teacher
+        ORDER BY e.subject, m.title, m.stu_name";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([':teacher' => $teacher_name]);
+
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($data)) {
+        die("No data found.");
+    }
+
+    $response = [];
+    $subjects = [];
+
+    // Organize data by subject
+    foreach ($data as $row) {
+        $subject = $row['subject'];
+        if (!isset($subjects[$subject])) {
+            $subjects[$subject] = [];
+        }
+        $subjects[$subject][] = [
+            'title' => $row['title'],
+            'stu_name' => $row['stu_name'],
+            'marks' => $row['marks'],
+            'date' => $row['date']
+        ];
+    }
+
+    // Build response for JSON
+    foreach ($subjects as $subject => $users) {
+        $response[] = [
+            'subject' => $subject,
+            'users' => $users
+        ];
+
+    }
+
+    $totalPages = 1; // Adjust based on your pagination logic (if required)
+
+} catch (PDOException $e) {
+    die("Query failed: " . $e->getMessage());
+}
+
+// Close the connection
+$conn = null;
+
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leaderboard</title>
-    <link rel="stylesheet" href="#">
-</head>
-<body>
-<style>
-    /* General Styles */
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: #f4f4f4;
-        color: #333;
-    }
-
-    .leaderboard-container {
-        max-width: 1200px;
-        margin: 20px auto;
-        padding: 20px;
-        background-color: #fff;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        border-radius: 8px;
-        position: relative;
-    }
-
-    h1 {
-        text-align: center;
-        margin-bottom: 20px;
-    }
-
-    /* Form Styles */
-    #search-form {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-    }
-
-    #search-input {
-        width: 300px;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px 0 0 5px;
-        outline: none;
-    }
-
-    #search-button {
-        padding: 10px 20px;
-        border: 1px solid #ccc;
-        border-left: none;
-        border-radius: 0 5px 5px 0;
-        background-color: #007bff;
-        color: #fff;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-
-    #search-button:hover {
-        background-color: #0056b3;
-    }
-
-    /* Table Styles */
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-    }
-
-    thead {
-        background-color: #007bff;
-        color: #fff;
-    }
-
-    thead th {
-        padding: 10px;
-        text-align: left;
-    }
-
-    tbody tr:nth-child(odd) {
-        background-color: #f9f9f9;
-    }
-
-    tbody tr:nth-child(even) {
-        background-color: #fff;
-    }
-
-    tbody td {
-        padding: 10px;
-        border-bottom: 1px solid #ddd;
-    }
-
-    tbody td a {
-        color: #007bff;
-        text-decoration: none;
-    }
-
-    tbody td a:hover {
-        text-decoration: underline;
-    }
-
-    /* Pagination Styles */
-    #pagination {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 20px;
-    }
-
-    #pagination button {
-        padding: 10px 20px;
-        border: 1px solid #007bff;
-        background-color: #007bff;
-        color: #fff;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        margin: 0 5px;
-    }
-
-    #pagination button:hover {
-        background-color: #0056b3;
-    }
-
-    #pagination #current-page {
-        margin: 0 10px;
-    }
-
-    /* Analysis Button Styles */
-    .analysis-button {
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        padding: 10px 20px;
-        background-color: #28a745;
-        color: #fff;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-
-    .analysis-button:hover {
-        background-color: #218838;
-    }
-
-    /* Responsive Styles */
-    @media (max-width: 768px) {
-        #search-input {
-            width: 200px;
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
-
-        table, thead, tbody, th, td, tr {
-            display: block;
+        table, th, td {
+            border: 1px solid black;
         }
-
-        thead {
-            display: none;
-        }
-
-        tbody tr {
-            margin-bottom: 15px;
-        }
-
-        tbody td {
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
-        }
-
-        tbody td::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 0;
-            width: 50%;
-            padding-left: 15px;
-            font-weight: bold;
+        th, td {
+            padding: 8px;
             text-align: left;
         }
-    }
-</style>
-<div class="leaderboard-container">
-    <h1>Leaderboard</h1>
-    <form id="search-form">
-        <input type="search" id="search-input" placeholder="Search by student name">
-        <button type="button" id="search-button">Search</button>
-    </form>
-    <div id="leaderboard-content">
-        <!-- leaderboard data will be populated here -->
-    </div>
-    <div id="pagination">
-        <button id="previous-page">Previous</button>
-        <button id="next-page">Next</button>
-        <span id="current-page">Page 1 of 1</span>
-    </div>
+        th {
+            background-color: #f2f2f2;
+        }
+        .pagination {
+            margin-top: 20px;
+        }
+        .pagination a {
+            margin: 0 5px;
+            padding: 8px 16px;
+            text-decoration: none;
+            background-color: #f2f2f2;
+            border: 1px solid #ddd;
+        }
+        .pagination a:hover {
+            background-color: #ddd;
+        }
+        /* Style for the Analysis button */
+        .btn-analysis {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        .btn-analysis:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Leaderboard</h2>
+
+    <table id="leaderboardTable">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Title</th>
+                <th>Student Name</th>
+                <th>Marks</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data rows will be inserted here -->
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination" id="pagination"></div>
 
     <!-- Analysis Button -->
-    <button class="analysis-button" onclick="location.href='analysis2.php'">Analysis</button>
+    <button class="btn-analysis" onclick="redirectToAnalysis()">Analysis</button>
 
-</div>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const searchForm = document.getElementById('search-form');
-        const searchInput = document.getElementById('search-input');
-        const leaderboardContent = document.getElementById('leaderboard-content');
-        const previousPageButton = document.getElementById('previous-page');
-        const nextPageButton = document.getElementById('next-page');
-        const currentPageSpan = document.getElementById('current-page');
-        
-        let currentPage = 1;
-        let totalPages = 1;
-        const rowsPerPage = 10;
+    <script>
+        // The PHP response is already formatted as a JSON structure.
+        const response = <?php echo json_encode($response); ?>;
+        const totalPages = <?php echo $totalPages; ?>;
 
-        // Function to fetch leaderboard data from the server
-        function fetchLeaderboard(query = '', page = 1) {
-            fetch(`fetch_leaderboard.php?search=${query}&page=${page}&teacher_name=<?php echo $teacher_name; ?>`)
-                .then(response => response.json())
-                .then(data => {
-                    totalPages = data.totalPages;
-                    populateLeaderboard(data.data);
-                    updatePagination(totalPages, page);
-                })
-                .catch(error => console.error('Error fetching leaderboard data:', error));
-        }
+        // Function to populate the table with data
+        function populateTable(data) {
+            const tableBody = document.querySelector('#leaderboardTable tbody');
+            tableBody.innerHTML = ''; // Clear any existing rows
 
-        // Function to populate leaderboard with fetched data
-        function populateLeaderboard(data) {
-            leaderboardContent.innerHTML = '';
-
-            data.forEach(group => {
-                const subjectHeading = document.createElement('h2');
-                subjectHeading.textContent = `Subject: ${group.subject}`;
-                leaderboardContent.appendChild(subjectHeading);
-
-                const table = document.createElement('table');
-                const thead = document.createElement('thead');
-                thead.innerHTML = `
-                    <tr>
-                        <th>Title</th>
-                        <th>Student Name</th>
-                        <th>Marks</th>
-                        <th>Date</th>
-                    </tr>
-                `;
-                table.appendChild(thead);
-
-                const tbody = document.createElement('tbody');
-
-                group.users.forEach(user => {
+            data.forEach(subjectData => {
+                const subject = subjectData.subject;
+                subjectData.users.forEach(user => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td data-label="Title">${user.title}</td>
-                        <td data-label="Student Name">${user.stu_name}</td>
-                        <td data-label="Marks">${user.marks}</td>
-                        <td data-label="Date">${user.date}</td>
+                        <td>${subject}</td>
+                        <td>${user.title}</td>
+                        <td>${user.stu_name}</td>
+                        <td>${user.marks}</td>
+                        <td>${user.date}</td>
                     `;
-                    tbody.appendChild(row);
+                    tableBody.appendChild(row);
                 });
-
-                table.appendChild(tbody);
-                leaderboardContent.appendChild(table);
             });
         }
 
-        // Function to update pagination controls
-        function updatePagination(totalPages, page) {
-            currentPageSpan.textContent = `Page ${page} of ${totalPages}`;
-            previousPageButton.disabled = page === 1;
-            nextPageButton.disabled = page === totalPages;
-            if (totalPages === 1) {
-                previousPageButton.style.display = 'none';
-                nextPageButton.style.display = 'none';
-            } else {
-                previousPageButton.style.display = 'inline-block';
-                nextPageButton.style.display = 'inline-block';
+        // Function to create pagination buttons
+        function createPagination(totalPages) {
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = ''; // Clear existing pagination
+
+            for (let i = 1; i <= totalPages; i++) {
+                const pageLink = document.createElement('a');
+                pageLink.href = '#';
+                pageLink.textContent = i;
+                pageLink.onclick = function () {
+                    alert('You clicked page ' + i);
+                    // You can add functionality to fetch data for this page
+                    // and update the table accordingly.
+                };
+                paginationDiv.appendChild(pageLink);
             }
         }
 
-        // Event listener for search button
-        document.getElementById('search-button').addEventListener('click', () => {
-            const query = searchInput.value;
-            currentPage = 1;
-            fetchLeaderboard(query, currentPage);
-        });
+        // Populate the table with the fetched data
+        populateTable(response);
 
-        // Event listeners for pagination buttons
-        previousPageButton.addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                fetchLeaderboard(searchInput.value, currentPage);
-            }
-        });
+        // Create pagination controls
+        createPagination(totalPages);
 
-        nextPageButton.addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                fetchLeaderboard(searchInput.value, currentPage);
-            }
-        });
+        // Redirect to analysis2.php
+        function redirectToAnalysis() {
+            window.location.href = 'analysis2.php';
+        }
+    </script>
 
-        // Initial fetch of leaderboard data
-        fetchLeaderboard();
-    });
-</script>
 </body>
 </html>
