@@ -11,12 +11,12 @@ if (!$teacher_name) {
 
 try {
     // Fetch data for the highest marks per subject-title combination
-    $sql = "SELECT e.subject, m.title, m.stu_name, MAX(m.marks) AS max_marks
-            FROM marks m
-            INNER JOIN exam e ON m.title = e.title
-            WHERE e.teacher = :teacher
-            GROUP BY e.subject, m.title
-            ORDER BY e.subject, m.title";
+    $sql = "SELECT e.subject, m.title, m.stu_name, m.marks 
+        FROM marks m
+        INNER JOIN exam e ON m.title = e.title
+        WHERE e.teacher = :teacher
+        ORDER BY e.subject, m.title, m.stu_name";
+
 
     $stmt = $conn->prepare($sql);
     $stmt->execute([':teacher' => $teacher_name]);
@@ -35,9 +35,10 @@ try {
         $labels[] = $subjectTitle;
         $chartData[] = [
             'stu_name' => $row['stu_name'],
-            'marks' => $row['max_marks']
+            'marks' => $row['marks'] // Use 'marks' directly for individual scores
         ];
     }
+    
 } catch (PDOException $e) {
     die("Query failed: " . $e->getMessage());
 }
