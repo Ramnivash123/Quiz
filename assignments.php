@@ -139,6 +139,30 @@
             color: #000;
             text-decoration: none;
         }
+
+        #progressContainer {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            margin: 10px 0;
+            height: 20px;
+            position: relative;
+        }
+
+        #progressBar {
+            height: 100%;
+            background-color: #4caf50;
+            width: 0%;
+        }
+
+        #progressText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            color: #fff;
+        }
     </style>
     <script>
         let timerDuration; // Duration in seconds
@@ -313,6 +337,29 @@
             // Logic to display the previous question
         }
 
+        function showQuestion(index) {
+            const questions = document.querySelectorAll('.assignment-details');
+            const totalQuestions = questions.length;
+
+            questions.forEach((question, i) => {
+                question.style.display = (i === index) ? 'block' : 'none';
+                if (i === index) {
+                    const qnValue = question.getAttribute('data-qn'); // Assuming you set data-qn in the HTML
+                    document.getElementById('qn').value = qnValue;
+                }
+            });
+
+            // Update the progress bar
+            const progressPercentage = ((index + 1) / totalQuestions) * 100;
+            document.getElementById('progressBar').style.width = progressPercentage + '%';
+            document.getElementById('progressText').textContent = `Question ${index + 1} of ${totalQuestions}`;
+
+            // Show or hide navigation buttons
+            document.getElementById('prevBtn').style.display = (index === 0) ? 'none' : 'inline-block';
+            document.getElementById('nextBtn').style.display = (index === questions.length - 1) ? 'none' : 'inline-block';
+            document.getElementById('submitBtn').style.display = (index === questions.length - 1) ? 'inline-block' : 'none';
+        }
+
 
     </script>
 </head>
@@ -372,6 +419,11 @@ if (isset($_GET['title'])) {
 
 // No need to explicitly close the connection
 ?>
+
+<div id="progressContainer">
+    <div id="progressBar"></div>
+    <span id="progressText"></span>
+</div>
 
 <div class="button-group">
     <button type="button" class="btn btn-secondary" id="prevBtn" onclick="prevQuestion()">Previous</button>
