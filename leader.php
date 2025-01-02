@@ -69,119 +69,30 @@ $conn = null;
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body {
-            min-height: 100vh;
-            background-color: #f4f8fb;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 40px 20px;
-            font-family: 'Arial', sans-serif;
-        }
-
-        .container {
-            max-width: 1200px;
-            width: 100%;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-        }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-            font-size: 2.2rem;
-            font-weight: bold;
-        }
-
-        #leaderboardTable {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-        }
-
-        #leaderboardTable thead {
-            background-color: #007bff;
-            color: #fff;
-        }
-
-        #leaderboardTable th, #leaderboardTable td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #f1f1f1;
-            font-size: 1rem;
-        }
-
-        #leaderboardTable tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        #leaderboardTable tr:hover {
-            background-color: #f5f5f5;
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        .pagination a {
-            margin: 0 5px;
-            padding: 8px 16px;
-            border-radius: 4px;
-            background-color: #007bff;
-            color: #fff;
-            text-decoration: none;
-            font-size: 1rem;
-        }
-
-        .pagination a:hover {
-            background-color: #0056b3;
-        }
-
-        .pagination a.active {
-            background-color: #0056b3;
-            cursor: not-allowed;
-        }
-
-        .btn-analysis {
-            background-color: #28a745;
-            color: white;
-            padding: 12px 30px;
-            font-size: 1.1rem;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            display: block;
-            margin: 20px auto;
-        }
-
-        .btn-analysis:hover {
-            background-color: #218838;
-        }
-
-        .home-logo {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 50px;
-            transition: transform 0.2s ease;
-        }
-
-        .home-logo:hover {
-            transform: scale(1.1);
-        }
+        /* Add your styles here */
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Leaderboard</h2>
 
-        <table id="leaderboardTable">
+        <!-- Filter Section -->
+        <div class="mb-4">
+            <label for="subjectSelect" class="form-label">Select Subject:</label>
+            <select id="subjectSelect" class="form-select">
+                <option value="">-- Select Subject --</option>
+                <!-- Subjects will be populated dynamically -->
+            </select>
+
+            <label for="titleSelect" class="form-label mt-3">Select Title:</label>
+            <select id="titleSelect" class="form-select">
+                <option value="">-- Select Title --</option>
+                <!-- Titles will be populated dynamically -->
+            </select>
+        </div>
+
+        <!-- Table Section -->
+        <table id="leaderboardTable" class="table table-striped" style="display: none;">
             <thead>
                 <tr>
                     <th>Subject</th>
@@ -197,28 +108,70 @@ $conn = null;
         </table>
 
         <!-- Pagination -->
-        <div class="pagination" id="pagination"></div>
+        <div class="pagination" id="pagination" style="display: none;"></div>
 
         <!-- Analysis Button -->
-        <button class="btn-analysis" onclick="redirectToAnalysis()">Analysis</button>
+        <button class="btn-analysis btn btn-success" onclick="redirectToAnalysis()">Analysis</button>
     </div>
 
     <script>
-        // The PHP response is already formatted as a JSON structure.
         const response = <?php echo json_encode($response); ?>;
         const totalPages = <?php echo $totalPages; ?>;
 
-        // Function to populate the table with data
-        function populateTable(data) {
-            const tableBody = document.querySelector('#leaderboardTable tbody');
-            tableBody.innerHTML = ''; // Clear any existing rows
+        const subjectSelect = document.getElementById('subjectSelect');
+        const titleSelect = document.getElementById('titleSelect');
+        const leaderboardTable = document.getElementById('leaderboardTable');
+        const paginationDiv = document.getElementById('pagination');
 
-            data.forEach(subjectData => {
-                const subject = subjectData.subject;
-                subjectData.users.forEach(user => {
+        // Populate Subject Dropdown
+        const subjects = Array.from(new Set(response.map(item => item.subject)));
+        subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject;
+            option.textContent = subject;
+            subjectSelect.appendChild(option);
+        });
+
+        // Populate Title Dropdown based on Subject Selection
+        subjectSelect.addEventListener('change', () => {
+            titleSelect.innerHTML = '<option value="">-- Select Title --</option>';
+            const selectedSubject = subjectSelect.value;
+            if (selectedSubject) {
+                const titles = Array.from(new Set(
+                    response.find(item => item.subject === selectedSubject)?.users.map(user => user.title) || []
+                ));
+                titles.forEach(title => {
+                    const option = document.createElement('option');
+                    option.value = title;
+                    option.textContent = title;
+                    titleSelect.appendChild(option);
+                });
+            }
+            updateTable();
+        });
+
+        // Update Table based on Subject and Title Selection
+        titleSelect.addEventListener('change', updateTable);
+
+        function updateTable() {
+            const selectedSubject = subjectSelect.value;
+            const selectedTitle = titleSelect.value;
+
+            if (selectedSubject && selectedTitle) {
+                leaderboardTable.style.display = 'table';
+                paginationDiv.style.display = 'flex';
+
+                const filteredData = response
+                    .filter(item => item.subject === selectedSubject)
+                    .flatMap(item => item.users.filter(user => user.title === selectedTitle));
+
+                const tableBody = leaderboardTable.querySelector('tbody');
+                tableBody.innerHTML = '';
+
+                filteredData.forEach(user => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${subject}</td>
+                        <td>${selectedSubject}</td>
                         <td>${user.title}</td>
                         <td>${user.stu_name}</td>
                         <td>${user.marks}</td>
@@ -226,37 +179,16 @@ $conn = null;
                     `;
                     tableBody.appendChild(row);
                 });
-            });
-        }
-
-        // Function to create pagination buttons
-        function createPagination(totalPages) {
-            const paginationDiv = document.getElementById('pagination');
-            paginationDiv.innerHTML = ''; // Clear existing pagination
-
-            for (let i = 1; i <= totalPages; i++) {
-                const pageLink = document.createElement('a');
-                pageLink.href = '#';
-                pageLink.textContent = i;
-                pageLink.onclick = function () {
-                    alert('You clicked page ' + i);
-                    // You can add functionality to fetch data for this page
-                    // and update the table accordingly.
-                };
-                paginationDiv.appendChild(pageLink);
+            } else {
+                leaderboardTable.style.display = 'none';
+                paginationDiv.style.display = 'none';
             }
         }
 
-        // Populate the table with the fetched data
-        populateTable(response);
-
-        // Create pagination controls
-        createPagination(totalPages);
-
-        // Redirect to analysis2.php
         function redirectToAnalysis() {
             window.location.href = 'analysis2.php';
         }
     </script>
 </body>
 </html>
+
