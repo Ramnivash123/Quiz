@@ -10,35 +10,46 @@ if (!$teacher_name) {
 }
 
 try {
-    // Fetch data for the highest marks per subject-title combination
-    $sql = "SELECT e.subject, m.title, m.stu_name, m.marks 
+    // Fetch unique subject-title combinations for dropdown
+    $dropdownSql = "SELECT DISTINCT e.subject, m.title
+        FROM marks m
+        INNER JOIN exam e ON m.title = e.title
+        WHERE e.teacher = :teacher
+        ORDER BY e.subject, m.title";
+
+    $dropdownStmt = $conn->prepare($dropdownSql);
+    $dropdownStmt->execute([':teacher' => $teacher_name]);
+
+    $dropdownData = $dropdownStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch data for all students' marks
+    $dataSql = "SELECT e.subject, m.title, m.stu_name, m.marks 
         FROM marks m
         INNER JOIN exam e ON m.title = e.title
         WHERE e.teacher = :teacher
         ORDER BY e.subject, m.title, m.stu_name";
 
+    $dataStmt = $conn->prepare($dataSql);
+    $dataStmt->execute([':teacher' => $teacher_name]);
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute([':teacher' => $teacher_name]);
-
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $data = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (empty($data)) {
         die("No data found.");
     }
 
-    $labels = [];
     $chartData = [];
 
     foreach ($data as $row) {
         $subjectTitle = $row['subject'] . ' - ' . $row['title'];
-        $labels[] = $subjectTitle;
-        $chartData[] = [
+        if (!isset($chartData[$subjectTitle])) {
+            $chartData[$subjectTitle] = [];
+        }
+        $chartData[$subjectTitle][] = [
             'stu_name' => $row['stu_name'],
-            'marks' => $row['marks'] // Use 'marks' directly for individual scores
+            'marks' => $row['marks']
         ];
     }
-    
 } catch (PDOException $e) {
     die("Query failed: " . $e->getMessage());
 }
@@ -46,8 +57,12 @@ try {
 // Close the connection
 $conn = null;
 
-// Use $labels and $chartData as needed
+// Encode chartData for JavaScript
+$chartDataJson = json_encode($chartData);
+$dropdownDataJson = json_encode($dropdownData);
 ?>
+
+
 
 
 <!DOCTYPE html>
@@ -207,82 +222,121 @@ $conn = null;
         </div>
         <div class="main-content">
             <div class="header">
-                <h2>Highest Marks Analysis</h2>
-                <span id="current-date"></span>
+                <h2>Student Marks Analysis</h2>
             </div>
+
+            <!-- Dropdowns for Subject and Title -->
             <div class="card">
-                <h3>Highest Marks per Subject-Title Combination</h3>
-                <div class="chart-container">
-                    <canvas id="highestMarksChart"></canvas>
-                </div>
+                <h3>Filter by Subject and Title</h3>
+                <select id="subject-dropdown">
+                    <option value="" disabled selected>Select Subject</option>
+                </select>
+                <select id="title-dropdown" disabled>
+                    <option value="" disabled selected>Select Title</option>
+                </select>
             </div>
-            <!-- You can add more cards here for additional charts or statistics -->
+
+            <!-- Chart Container -->
+            <div id="chart-container" class="chart-container">
+                <canvas id="chart"></canvas>
+            </div>
         </div>
-    </div>
 
-    <button id="table-button" onclick="location.href='leader.php'">
-        <i class="fas fa-table"></i> View Table
-    </button>
+        <script>
+            const dropdownData = <?php echo $dropdownDataJson; ?>;
+            const chartData = <?php echo $chartDataJson; ?>;
 
-    <script>
-        // Set current date
-        document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
+            const subjectDropdown = document.getElementById('subject-dropdown');
+            const titleDropdown = document.getElementById('title-dropdown');
+            const chartContainer = document.getElementById('chart-container');
+            const chartCanvas = document.getElementById('chart');
 
-        const labels = <?php echo json_encode($labels); ?>;
-        const chartData = <?php echo json_encode($chartData); ?>;
-        const data = chartData.map(item => item.marks);
-        const backgroundColors = ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff', '#eef2ff'];
+            let chart;
 
-        const ctx = document.getElementById('highestMarksChart').getContext('2d');
-        const highestMarksChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Highest Marks',
-                    data: data,
-                    backgroundColor: backgroundColors,
-                    borderColor: 'rgba(0, 0, 0, 0.1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    },
-                    y: {
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false,
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: function(tooltipItem) {
-                                return labels[tooltipItem[0].dataIndex];
+            // Populate subject dropdown
+            const subjects = [...new Set(dropdownData.map(item => item.subject))];
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                subjectDropdown.appendChild(option);
+            });
+
+            // Populate title dropdown based on subject selection
+            subjectDropdown.addEventListener('change', () => {
+                titleDropdown.innerHTML = '<option value="" disabled selected>Select Title</option>';
+                titleDropdown.disabled = false;
+
+                const selectedSubject = subjectDropdown.value;
+                const titles = dropdownData
+                    .filter(item => item.subject === selectedSubject)
+                    .map(item => item.title);
+
+                titles.forEach(title => {
+                    const option = document.createElement('option');
+                    option.value = title;
+                    option.textContent = title;
+                    titleDropdown.appendChild(option);
+                });
+            });
+
+            // Display chart based on subject and title selection
+            titleDropdown.addEventListener('change', () => {
+                const selectedSubject = subjectDropdown.value;
+                const selectedTitle = titleDropdown.value;
+                const subjectTitle = `${selectedSubject} - ${selectedTitle}`;
+
+                const chartDataForSelection = chartData[subjectTitle];
+                if (chartDataForSelection) {
+                    const labels = chartDataForSelection.map(item => item.stu_name);
+                    const data = chartDataForSelection.map(item => item.marks);
+
+                    if (chart) chart.destroy();
+
+                    const ctx = chartCanvas.getContext('2d');
+                    chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `Marks (${subjectTitle})`,
+                                data: data,
+                                backgroundColor: labels.map(
+                                    () => `hsl(${Math.random() * 360}, 70%, 75%)`
+                                ),
+                                borderColor: 'rgba(0, 0, 0, 0.1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: true
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (tooltipItem) {
+                                            return `${tooltipItem.raw} marks`;
+                                        }
+                                    }
+                                }
                             },
-                            label: function(tooltipItem) {
-                                return `Student: ${chartData[tooltipItem.dataIndex].stu_name}, Marks: ${tooltipItem.raw}`;
+                            scales: {
+                                x: {
+                                    beginAtZero: true
+                                },
+                                y: {
+                                    beginAtZero: true
+                                }
                             }
                         }
-                    }
+                    });
                 }
-            }
-        });
-    </script>
+            });
+        </script>
+
+
 </body>
 </html>
