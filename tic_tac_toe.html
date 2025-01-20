@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="text-center">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Tic-Tac-Toe</h1>
+    <div id="board" class="grid grid-cols-3 gap-4 w-64 mx-auto">
+      <!-- Cells will be added dynamically -->
+    </div>
+    <div id="message" class="mt-6 text-xl font-semibold text-gray-800"></div>
+    <button id="reset" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600">
+      Restart Game
+    </button>
+  </div>
+
+  <script>
+    const board = document.getElementById('board');
+    const message = document.getElementById('message');
+    const resetButton = document.getElementById('reset');
+    let currentPlayer = 'X';
+    let gameState = Array(9).fill(null);
+
+    // Winning combinations
+    const winningCombos = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+      [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+      [0, 4, 8], [2, 4, 6]             // Diagonals
+    ];
+
+    // Initialize the board
+    function createBoard() {
+      board.innerHTML = '';
+      gameState = Array(9).fill(null);
+      currentPlayer = 'X';
+      message.textContent = "Player X's Turn";
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('h-16', 'w-16', 'bg-white', 'border', 'border-gray-300', 'flex', 'items-center', 'justify-center', 'text-2xl', 'font-bold', 'cursor-pointer');
+        cell.dataset.index = i;
+        cell.addEventListener('click', handleMove);
+        board.appendChild(cell);
+      }
+    }
+
+    // Handle a player's move
+    function handleMove(event) {
+      const cell = event.target;
+      const index = cell.dataset.index;
+
+      if (!gameState[index]) {
+        gameState[index] = currentPlayer;
+        cell.textContent = currentPlayer;
+        cell.classList.add(currentPlayer === 'X' ? 'text-blue-500' : 'text-red-500');
+
+        if (checkWin()) {
+          message.textContent = `Player ${currentPlayer} Wins!`;
+          board.querySelectorAll('div').forEach(cell => cell.style.pointerEvents = 'none');
+        } else if (gameState.every(cell => cell)) {
+          message.textContent = 'It\'s a Draw!';
+        } else {
+          currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+          message.textContent = `Player ${currentPlayer}'s Turn`;
+        }
+      }
+    }
+
+    // Check if a player has won
+    function checkWin() {
+      return winningCombos.some(combo =>
+        combo.every(index => gameState[index] === currentPlayer)
+      );
+    }
+
+    // Reset the game
+    resetButton.addEventListener('click', createBoard);
+
+    // Create the board on page load
+    createBoard();
+  </script>
+</body>
+</html>

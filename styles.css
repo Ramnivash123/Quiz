@@ -1,0 +1,70 @@
+/* styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary: #6366F1;
+    --secondary: #F3F4F6;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--secondary);
+}
+
+.custom-shape {
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+}
+
+#chatbot {
+    width: 350px;
+    height: 500px;
+}
+
+#chatMessages {
+    height: 350px;
+}
+
+.modal {
+    transition: opacity 0.25s ease;
+}
+
+body.modal-active {
+    overflow-x: hidden;
+    overflow-y: visible !important;
+}
+
+/* Add Tailwind-based color utilities */
+.text-primary {
+    color: var(--primary);
+}
+
+.bg-primary {
+    background-color: var(--primary);
+}
+
+.bg-secondary {
+    background-color: var(--secondary);
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #282c34;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+canvas {
+    border: 1px solid #fff;
+    background-color: #000;
+}
+
+.score {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 1.5rem;
+}

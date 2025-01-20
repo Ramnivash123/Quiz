@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Card Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="text-center">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Memory Card Game</h1>
+    <div id="gameBoard" class="grid grid-cols-4 gap-4 w-80 mx-auto">
+      <!-- Cards will be generated dynamically -->
+    </div>
+    <p id="status" class="mt-6 text-lg text-gray-800"></p>
+    <button id="restart" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600">
+      Restart Game
+    </button>
+  </div>
+
+  <script>
+    const gameBoard = document.getElementById("gameBoard");
+    const statusText = document.getElementById("status");
+    const restartButton = document.getElementById("restart");
+
+    // Card icons (pairs)
+    const cardIcons = ["🐶", "🐱", "🐭", "🦊", "🐼", "🐨", "🐵", "🦁"];
+    let shuffledCards = [];
+    let flippedCards = [];
+    let matchedPairs = 0;
+
+    // Shuffle cards and initialize the game
+    function startGame() {
+      shuffledCards = [...cardIcons, ...cardIcons]
+        .sort(() => 0.5 - Math.random());
+      gameBoard.innerHTML = "";
+      flippedCards = [];
+      matchedPairs = 0;
+      statusText.textContent = "Find all pairs!";
+      shuffledCards.forEach((icon, index) => {
+        const card = document.createElement("div");
+        card.classList.add(
+          "card",
+          "h-16",
+          "w-16",
+          "bg-blue-500",
+          "text-white",
+          "rounded",
+          "flex",
+          "items-center",
+          "justify-center",
+          "text-2xl",
+          "cursor-pointer",
+          "font-bold"
+        );
+        card.dataset.index = index;
+        card.addEventListener("click", handleCardClick);
+        gameBoard.appendChild(card);
+      });
+    }
+
+    // Handle card click
+    function handleCardClick(event) {
+      const card = event.target;
+      const index = card.dataset.index;
+
+      // Prevent clicking on the same card or more than 2 cards
+      if (card.textContent || flippedCards.length >= 2) return;
+
+      // Show the card's icon
+      card.textContent = shuffledCards[index];
+      card.classList.add("bg-green-500");
+
+      // Add to flipped cards
+      flippedCards.push({ card, index });
+
+      if (flippedCards.length === 2) {
+        checkMatch();
+      }
+    }
+
+    // Check if flipped cards match
+    function checkMatch() {
+      const [first, second] = flippedCards;
+      if (shuffledCards[first.index] === shuffledCards[second.index]) {
+        // Match
+        first.card.classList.add("bg-yellow-500");
+        second.card.classList.add("bg-yellow-500");
+        matchedPairs++;
+        flippedCards = [];
+        if (matchedPairs === cardIcons.length) {
+          statusText.textContent = "You won! 🎉";
+        }
+      } else {
+        // No match, hide after a short delay
+        setTimeout(() => {
+          first.card.textContent = "";
+          second.card.textContent = "";
+          first.card.classList.remove("bg-green-500");
+          second.card.classList.remove("bg-green-500");
+          flippedCards = [];
+        }, 1000);
+      }
+    }
+
+    // Restart button event
+    restartButton.addEventListener("click", startGame);
+
+    // Initialize the game on page load
+    startGame();
+  </script>
+</body>
+</html>
